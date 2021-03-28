@@ -1,0 +1,6 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+t/Device-RD6006.t
+lib/Device/RD6006.pm

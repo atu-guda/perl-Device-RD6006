@@ -1,0 +1,6 @@
+Revision history for Perl extension Device::RD6006.
+
+0.01  Sat Mar 27 23:40:28 2021
+	- original version; created by h2xs 1.23 with options
+		-A -X -n Device::RD6006
+
