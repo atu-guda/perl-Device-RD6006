@@ -57,24 +57,43 @@ sub wr1
   TRY:
   for my $i ( 0.. $self->{n_try} ) {
 
-    # carp( "wr1: i= $i\n" );
+    my $rc;
+    eval {
+      $rc =  $self->{dev}->send_request( $req );
+    };
+    if( $@ ) {
+      carp( "wr1 send trap " );
+      $rc = 0;
+    }
 
-    # TODO: eval
-    if( ! $self->{dev}->send_request( $req ) ) {
-      carp( "Send error: $act_str  rc= $! i= $i\n" );
+    if( ! $rc ) {
+      carp( "wr1 send error: $act_str rc= $rc err= $! i= $i " );
       usleep( $self->{sleep_err} );
       next TRY;
     }
-    # carp( "wr1: send\n" );
 
     usleep( $self->{sleep_cmd_resp} );
-    # TODO: eval
-    my $resp = $self->{dev}->receive_response();
+
+    $rc = 1;
+    my $resp;
+    eval {
+      $resp = $self->{dev}->receive_response();
+    };
+    if( $@ ) {
+      carp( "wr1 recv trap " );
+      $rc = 0;
+    }
+
+    if( ! $rc ) {
+      carp( "wr1 recv error: $act_str  err= $! i= $i " );
+      usleep( $self->{sleep_err} );
+      next TRY;
+    }
+
     if( $resp->success ) {
-      # carp( "wr1: ok\n" );
       return $resp;
     }
-    carp( "Recv error: $act_str  rc= $! i= $i\n" );
+    carp( "wr1 recv not success $act_str  err= $! i= $i " );
 
     usleep( $self->{sleep_err} );
   }
@@ -90,24 +109,45 @@ sub readRegs
   TRY:
   for my $i ( 0.. $self->{n_try} ) {
 
-    # carp( "readRegs: reg0= $reg0  nreag= $nreg  i= $i " );
+    my $rc;
+    eval {
+      $rc = $self->{dev}->send_request( $req );
+    };
+    if( $@ ) {
+      carp( "read send trap " );
+      $rc = 0;
+    }
 
-    # TODO: eval
-    if( ! $self->{dev}->send_request( $req ) ) {
-      carp( "Send read error: reg0= $reg0 nreg = $nreg rc= $! i= $i\n" );
+    if( ! $rc ) {
+      carp( "Send read error: reg0= $reg0 nreg = $nreg err= $! i= $i " );
       usleep( $self->{sleep_err} );
       next TRY;
     }
-    # carp( "readRegs: s " );
 
     usleep( $self->{sleep_cmd_resp} );
-    # TODO: eval
-    my $resp = $self->{dev}->receive_response();
+
+    $rc = 1;
+    my $resp;
+
+    eval {
+      $resp = $self->{dev}->receive_response();
+    };
+    if( $@ ) {
+      carp( "Read resp trap " );
+      $rc = 0;
+    }
+
+    if( ! $rc ) {
+      carp( "Read recv error: err= $! i= $i " );
+      usleep( $self->{sleep_err} );
+      next TRY;
+    }
 
     if( $resp->success() ) {
       return $resp->{message}->{values};
     }
-    carp( "Recv read error: rc= $! i= $i\n" );
+
+    carp( "Recv read error: err= $! i= $i\n" );
     usleep( $self->{sleep_err} );
   }
 
@@ -285,8 +325,8 @@ sub check_Signature
     carp( "Fail to read signature" );
     return 0;
   }
-  my $s = sprintf( "Signature = %04X" , $x );
-  carp( $s );
+  #my $s = sprintf( "Signature = %04X" , $x );
+  #carp( $s );
   return ( $x == 0xEA9E );
 }
 
@@ -297,7 +337,7 @@ sub DESTROY
   if( !defined($self->{dev}) ) {
     return;
   }
-  # $self->{dev}->diconnect();
+  $self->{dev}->disconnect();
   # carp( "destroy err= $err\n" );
   return;
 }
