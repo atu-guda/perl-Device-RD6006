@@ -15,7 +15,7 @@ our $VERSION = '0.01';
 
 sub new
 {
-  my ( $class, $tty, $addr ) = @_;
+  my ( $class, $tty, $addr, $is_p ) = @_;
   my $self = {};
   bless( $self , $class );
 
@@ -25,8 +25,16 @@ sub new
   $self->{n_try}     =     10;
   $self->{n_main_regs} =   20;
 
-  $self->{v_scale}   =  100.0; # more for RD6006P ?
-  $self->{i_scale}   = 1000.0;
+  $self->{is_p}   =  $is_p ? 1 : 0;
+  if( $self->{is_p} ) {
+    $self->{sign}      = 60065;
+    $self->{v_scale}   =  1000.0;
+    $self->{i_scale}   = 10000.0;
+  } else {
+    $self->{sign}      = 60062;
+    $self->{v_scale}   =  100.0;
+    $self->{i_scale}   = 1000.0;
+  }
 
   $self->{sleep_cmd_resp} =  50000; # sleep time in us between cmd and responce
   $self->{sleep_err}      = 500000; # sleep time in us after error
@@ -284,6 +292,7 @@ sub read_V_set
   if( defined( $x ) ) {
     return $x / $self->{v_scale};
   }
+  return 0;
 }
 
 sub read_I_set
@@ -327,7 +336,7 @@ sub check_Signature
   }
   #my $s = sprintf( "Signature = %04X" , $x );
   #carp( $s );
-  return ( $x == 0xEA9E );
+  return ( $x == $self->{sign} );
 }
 
 
@@ -349,11 +358,32 @@ __END__
 
 =head1 NAME
 
-Device::RD6006 - Perl extension to control RD6006 power source via Modbus RTU
+Device::RD6006 - Perl extension to control RD6006 (P) power source via Modbus RTU
 
 =head1 SYNOPSIS
 
   use Device::RD6006;
+
+  my $pwr1 = Device::RD6006->new( "/dev/ttyUSB0", 1, 0 );
+
+  if( ! $pwr1->check_Signature() ) {
+    die( "Error: bad RD6006 signature" );
+  }
+
+  $pwr1->set_V( 5.25 );
+  $pwr1->set_I( 0.2 );
+  $pwr1->On();
+
+  if( ! $pwr1->readMainRegs() ) {
+    die( "Fail to read RD6006 registers" );
+  }
+  my $s = sprintf( "%5.2f   %5.3f %5.2f   %5.3f %6.2f   %1d    %2d\n",
+          $pwr1->get_V(), $pwr1->get_I(), $pwr1->get_V_set(), $pwr1->get_I_set(),
+          $pwr1->get_W(), $pwr1->get_OnOff(), $pwr1->get_Error() );
+
+  print( $s );
+
+  $pwr1->Off();
 
 
 =head1 DESCRIPTION
